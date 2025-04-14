@@ -15,7 +15,6 @@ int main(){
     char str1[80], str2[80];
     while(1){
         fd1 = open(myfifo, O_RDONLY);
-        read(fd1, str1, 80);
 
         printf("User1: %s\n", str1);
         close(fd1);
