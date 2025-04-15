@@ -13,7 +13,7 @@ int main(){
     const char* name = "OS";
 
     const char* message0 = "Studying ";
-    const char* message1 = "Operating Systems ";
+    const char* message1 = "Operating System ";
     const char* message2 = "Is Fun\n";
 
     int shm_fd;
