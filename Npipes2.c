@@ -4,7 +4,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 
 int main(){
@@ -13,9 +12,10 @@ int main(){
 
     mkfifo(myfifo, 0666);
     char str1[80], str2[80];
+
     while(1){
         fd1 = open(myfifo, O_RDONLY);
-        read(fd1, str1, 80);
+        read(fd1, str1, sizeof(str1));
         printf("User1: %s\n", str1);
         close(fd1);
 
