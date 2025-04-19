@@ -9,5 +9,8 @@
 #include <sys/types.h>
 
 int main(){
+    const int SIZE = 4096;
+    const char name = "OS"; 
+    int shm_fd;
     
 }
