@@ -22,7 +22,7 @@ int main(){
 
         line[strcspn(line, "\n")] = '\0';
 
-        if(strcmp(line, "quie") == 0){
+        if(strcmp(line, "quit") == 0){
             break;
         }
 
