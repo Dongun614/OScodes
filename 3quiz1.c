@@ -14,7 +14,7 @@ int main(){
         fflush(stdout);
 
         if(!fgets(line, MAX_LINE, stdin)){
-            perror("fgets failed");
+            peeror("fgets failed");
             break;
         }
 
@@ -24,7 +24,7 @@ int main(){
 
         int argc = 0;
         char* token = strtok(line, " ");
-        while(token != NULL && argc < MAX_ARGS - 1){
+        while(token != NULL && argc < MAX_ARGS -1){
             args[argc++] = token;
             token = strtok(NULL, " ");
         }
@@ -44,6 +44,7 @@ int main(){
             wait(NULL);
         }
     }
-    printf("Shell exited.\n");
+
+    printf("Shell exited. \n");
     return 0;
 }

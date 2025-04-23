@@ -32,7 +32,7 @@ int main(){
 
         pid_t pid = fork();
         if(pid < 0){
-            perror("fork failed");
+            perror("fork faied");
         }
         else if(pid == 0){
             if(execvp(args[0], args) == -1){
@@ -44,6 +44,7 @@ int main(){
             wait(NULL);
         }
     }
+
     printf("Shell exited.\n");
     return 0;
 }
