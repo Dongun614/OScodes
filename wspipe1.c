@@ -56,11 +56,10 @@ int main(int argc, char* argv[]){
                 total_count++;
             }
             if(print_flag){
-                printf("[%d] ", i);
                 p_cur = buffer;
                 while((p_ptr = findWord(p_cur, word)) != NULL){
-                    printf("%.*s", (int)(p_ptr - p_cur), p_cur);
-                    printf(AC_RED "%.*s" AC_NORMAL, wordLength(word), p_ptr);
+                    printf("[%d] %.*s", i, (int)(p_ptr - p_cur), p_cur);
+                    printf("%s%s%s", AC_RED, word, AC_NORMAL);
                     p_cur = p_ptr + wordLength(word);
                 }
                 printf("%s", p_cur);
