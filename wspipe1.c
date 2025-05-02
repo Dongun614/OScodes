@@ -8,6 +8,8 @@
 #define READ_END 0
 #define WRITE_END 1
 #define BUFFER_SIZE 1024
+#define AC_RED "\x1b[31m"
+#define AC_NORMAL "\x1b[m"
 
 ssize_t read_line(int fd, char* buffer, size_t max_length);
 int wordLength(char* text);
@@ -43,19 +45,37 @@ int main(int argc, char* argv[]){
     if(pid > 0){
         close(fd[WRITE_END]);
         i=1;
-        char* ptr, *cur;
+        char *ptr, *cur;
+        char *p_cur, *p_ptr;
         while(read_line(fd[READ_END], buffer, BUFFER_SIZE-1) != 0){
             cur = buffer;
+            int print_flag = 0;
             while((ptr = findWord(cur, word)) != NULL){
-                total_count++;
                 cur = ptr + wordLength(word);
+                print_flag = 1;
+                total_count++;
+            }
+            if(print_flag){
+                printf("[%d] ", i);
+                p_cur = buffer;
+                while((p_ptr = findWord(p_cur, word)) != NULL){
+                    printf("%.*s", (int)(p_ptr - p_cur), p_cur);
+                    printf(AC_RED "%.*s" AC_NORMAL, wordLength(word), p_ptr);
+                    p_cur = p_ptr + wordLength(word);
+                }
+                printf("%s", p_cur);
             }
             i++;
         }
+// 146 148 152 152 157 159 164 168 169 176 178 182 184 188 189 190 219 250
+        if(total_count == 0){
+            printf("There is no '%s' in process '%s'\n", word, command);
+        }
+
+        //printf("total count : %d\n", total_count);
 
         close(fd[READ_END]);
         wait(NULL);
-        printf("Result for '%s' : %d\n", word, total_count);
     }
     else{
         close(fd[READ_END]);
@@ -84,14 +104,14 @@ ssize_t read_line(int fd, char* buffer, size_t max_length){
 
 char* findWord(char* text, char* word) {
     if (*word == '\0') return text;
-    for (char* ptr = text; *ptr; ptr++) {
-        char* t = ptr;
+    for (char* ret_ptr = text; *ret_ptr; ret_ptr++) {
+        char* t = ret_ptr;
         char* w = word;
         while (*t && *w && *t == *w) {
             t++;
             w++;
         }
-        if (*w == '\0') return ptr;
+        if (*w == '\0') return ret_ptr;
     }
     return NULL;
 }
