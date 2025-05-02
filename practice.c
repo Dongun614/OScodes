@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -12,6 +11,7 @@
 
 ssize_t read_line(int fd, char* buffer, size_t max_length);
 int wordLength(char* text);
+char* findWord(char* text, char* word);
 
 int main(int argc, char* argv[]){
     pid_t pid;
@@ -82,48 +82,24 @@ ssize_t read_line(int fd, char* buffer, size_t max_length){
     return num_read;
 }
 
-char* findWord(char* text, char* word){
-    size_t wordlen = wordLength(word);
-    char* buf = (char*)malloc(wordlen + 1);
-
-    off_t pos = 0;
-    ssize_t n;
-
-    int fd = open(text, O_RDONLY);
-
-    while(1){
-        if(lseek(fd, pos, SEEK_SET) == -1) break;
-
-        n = read(fd, buf, wordlen);
-        if(n<=0) break;
-
-        buf[n] = '\0';
-        if(buf == word){
-            free(buf);
-            close(fd);
-            return pos;
+char* findWord(char* text, char* word) {
+    if (*word == '\0') return text;
+    for (char* ptr = text; *ptr; ptr++) {
+        char* t = ptr;
+        char* w = word;
+        while (*t && *w && *t == *w) {
+            t++;
+            w++;
         }
-
-        pos++;
+        if (*w == '\0') return ptr;
     }
+    return NULL;
 }
 
-int wordLength(char* text){
-    int fd = open(text, O_RDONLY);
-    if(fd == -1){
-        fprintf(stderr, "Open failed");
-        return 1;
-    }
-
-    char c;
+int wordLength(char* text) {
     int len = 0;
-    ssize_t n;
-
-    while((n == read(fd, &c, 1)) == 1){
-        if(c == '\0') break;
+    while (text[len] != '\0') {
         len++;
     }
-
-    close(fd);
     return len;
 }
