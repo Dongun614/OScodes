@@ -41,7 +41,7 @@ int main(){
             exit(1);
         }
         else{
-            wait(NULL);
+            wait(NULL);//kj
         }
     }
 
