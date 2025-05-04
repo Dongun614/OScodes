@@ -24,7 +24,7 @@ int main(){
         printf("Map failed\n");
         exit(-1);
     }
-//
+
     printf("%s\n", (char*) ptr);
 
     if(shm_unlink(name) == -1){
