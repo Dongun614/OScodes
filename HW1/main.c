@@ -72,12 +72,12 @@ int main(int argc, char* argv[]){
             if(matchedLine > 0){
                 if(fileNameONLY){
                     if(!showFileName){
-                        printf("%s\n", command);
+                        printf("There is match on process %s\n", command);
                         showFileName = 1;
                     }
                 }
                 else if(numberONLY){
-                    printf("%d\n", i);
+                    printf("Matched line number: [%d]\n", i);
                 }
                 else if(!matchCountONLY){
                     pCur = buffer;
@@ -94,10 +94,10 @@ int main(int argc, char* argv[]){
         }
 
         if(matchCountONLY){
-            printf("%d\n", totalCount);
+            printf("Total count: %d\n", totalCount);
         }
 
-        if(totalCount == 0 && !matchCountONLY && !fileNameONLY){
+        if(totalCount == 0){
             printf("There is no '%s' in process '%s'\n", word, command);
         }
 
