@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <getopt.h>  
+#include <ctype.h>   
 
 #define READ_END 0
 #define WRITE_END 1
@@ -11,25 +13,44 @@
 #define AC_RED "\x1b[31m"
 #define AC_NORMAL "\x1b[m"
 
+int numberONLY = 0;  // -n
+int fileNameONLY = 0;    // -l
+int matchCountONLY = 0;   // -c
+int caseInsensitive = 0;   // -i
+
 ssize_t read_line(int fd, char* buffer, size_t max_length);
 int wordLength(char* text);
-char* findWord(char* text, char* word);
+char* findWord(char* text, char* word, int case_insensitive);
 
 int main(int argc, char* argv[]){
     pid_t pid;
     int fd[2];
-
     int i;
     char buffer[BUFFER_SIZE];
     char* command, * word;
-    int total_count = 0;
-    if(argc < 3){
-        printf("Usage: %s <command> <word>", argv[0]);
-        return 0;
+    int totalCount = 0;
+    int opt;
+    int showFileName = 0; 
+
+    while ((opt = getopt(argc, argv, "nlci")) != -1) {
+        switch (opt) {
+            case 'n': numberONLY = 1; break;
+            case 'l': fileNameONLY = 1; break;
+            case 'c': matchCountONLY = 1; break;
+            case 'i': caseInsensitive = 1; break;
+            default:
+                fprintf(stderr, "Usage: %s [-n] [-l] [-c] [-i] <command> <word>\n", argv[0]);
+                return 1;
+        }
     }
 
-    command = argv[1];
-    word = argv[2];
+    if (optind + 1 >= argc) {
+        fprintf(stderr, "Usage: %s [-n] [-l] [-c] [-i] <command> <word>\n", argv[0]);
+        return 1;
+    }
+
+    command = argv[optind];
+    word = argv[optind + 1];
 
     if(pipe(fd) == -1){
         fprintf(stderr, "Pipe failed");
@@ -46,33 +67,49 @@ int main(int argc, char* argv[]){
         close(fd[WRITE_END]);
         i=1;
         char *ptr, *cur;
-        char *p_cur, *p_ptr;
+        char *pCur, *pPtr;
+        
         while(read_line(fd[READ_END], buffer, BUFFER_SIZE-1) != 0){
             cur = buffer;
-            int print_flag = 0;
-            while((ptr = findWord(cur, word)) != NULL){
+            int matchedLine = 0;
+            
+            while((ptr = findWord(cur, word, caseInsensitive)) != NULL){
                 cur = ptr + wordLength(word);
-                print_flag = 1;
-                total_count++;
+                matchedLine++;
+                totalCount++;
             }
-            if(print_flag){
-                p_cur = buffer;
-                printf("[%d] ", i);
-                while((p_ptr = findWord(p_cur, word)) != NULL){
-                    printf("%.*s", (int)(p_ptr - p_cur), p_cur);
-                    printf("%s%s%s", AC_RED, word, AC_NORMAL);
-                    p_cur = p_ptr + wordLength(word);
+            
+            if(matchedLine > 0){
+                if(fileNameONLY){
+                    if(!showFileName){
+                        printf("%s\n", command);
+                        showFileName = 1;
+                    }
                 }
-                printf("%s", p_cur);
+                else if(numberONLY){
+                    printf("%d\n", i);
+                }
+                else if(!matchCountONLY){
+                    pCur = buffer;
+                    printf("[%d] ", i);
+                    while((pPtr = findWord(pCur, word, caseInsensitive)) != NULL){
+                        printf("%.*s", (int)(pPtr - pCur), pCur);
+                        printf("%s%.*s%s", AC_RED, wordLength(word), pPtr, AC_NORMAL);
+                        pCur = pPtr + wordLength(word);
+                    }
+                    printf("%s", pCur);
+                }
             }
             i++;
         }
-
-        if(total_count == 0){
+        
+        if(matchCountONLY){
+            printf("%d\n", totalCount);
+        }
+        
+        if(totalCount == 0 && !matchCountONLY && !fileNameONLY){
             printf("There is no '%s' in process '%s'\n", word, command);
         }
-
-        //printf("total count : %d\n", total_count);
 
         close(fd[READ_END]);
         wait(NULL);
@@ -102,12 +139,17 @@ ssize_t read_line(int fd, char* buffer, size_t max_length){
     return num_read;
 }
 
-char* findWord(char* text, char* word) {
+char* findWord(char* text, char* word, int case_insensitive) {
     if (*word == '\0') return text;
     for (char* ret_ptr = text; *ret_ptr; ret_ptr++) {
         char* t = ret_ptr;
         char* w = word;
-        while (*t && *w && *t == *w) {
+        while (*t && *w) {
+            if (case_insensitive) {
+                if (tolower((unsigned char)*t) != tolower((unsigned char)*w)) break;
+            } else {
+                if (*t != *w) break;
+            }
             t++;
             w++;
         }
