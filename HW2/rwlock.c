@@ -62,6 +62,7 @@ void rwlock_release_readlock(rwlock_t *rw) {
     sem_post(&rw->mutex);
 }
 
+// Write Lock 획득
 void rwlock_acquire_writelock(rwlock_t *rw) {
     sem_wait(&rw->mutex);
     rw->write_waiting++;
