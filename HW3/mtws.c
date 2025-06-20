@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#define MAX_PATH 1024
+#define MAX_PATH 4096
 
 typedef struct {
     char **buffer;
@@ -18,20 +18,28 @@ typedef struct {
     pthread_cond_t full, empty;
 } Buffer;
 
+typedef struct {
+    int thread_id;
+} ThreadArg;
+
 Buffer buffer;
-char search_word[128];
-int found = 0;
+char search_word[512];
+int total_found = 0;
+int file_count = 0;
 int finish = 0;
+
 pthread_mutex_t total_mutex;
+pthread_mutex_t count_mutex;
 
 void toLower(char *str);
+void* producer(void *arg);
+void* consumer(void *arg);
 void initBuffer(Buffer *b, int size);
 void putBuffer(Buffer *b, char *path);
 char* getBuffer(Buffer *b);
-void* producer(void *arg);
-void recursive_search(char *path);
+void search(char *path);
 int countWord(char *filepath, char *word);
-void* consumer(void *arg);
+int checkFile(char *filename);
 
 int main(int argc, char *argv[]) {
     int opt, buf_size = 0, thread_num = 0;
@@ -45,32 +53,42 @@ int main(int argc, char *argv[]) {
             case 'w': strncpy(search_word, optarg, sizeof(search_word)); break;
             default:
                 fprintf(stderr, "Usage: %s -b <buffer> -t <threads> -d <dir> -w <word>\n", argv[0]);
-                exit(EXIT_FAILURE);
+                exit(1);
         }
     }
 
     if (!buf_size || !thread_num || !dir || !search_word[0]) {
         fprintf(stderr, "Missing required arguments.\n");
-        exit(EXIT_FAILURE);
+        exit(1);
     }
 
     toLower(search_word);
+    printf("Buffer size=%d, Num threads=%d, Directory=%s, SearchWord=%s\n",
+           buf_size, thread_num, dir, search_word);
+
     initBuffer(&buffer, buf_size);
     pthread_mutex_init(&total_mutex, NULL);
+    pthread_mutex_init(&count_mutex, NULL);
 
     pthread_t prod;
     pthread_create(&prod, NULL, producer, dir);
 
     pthread_t *threads = malloc(sizeof(pthread_t) * thread_num);
-    for (int i = 0; i < thread_num; ++i)
-        pthread_create(&threads[i], NULL, consumer, NULL);
+    ThreadArg *args = malloc(sizeof(ThreadArg) * thread_num);
+
+    for (int i = 0; i < thread_num; ++i) {
+        args[i].thread_id = i;
+        pthread_create(&threads[i], NULL, consumer, &args[i]);
+    }
 
     pthread_join(prod, NULL);
     for (int i = 0; i < thread_num; ++i)
         pthread_join(threads[i], NULL);
 
-    printf("Total words found: %d\n", found);
+    printf("Total found = %d (Num files=%d)\n", total_found, file_count);
 
+    free(threads);
+    free(args);
     return 0;
 }
 
@@ -80,7 +98,42 @@ void toLower(char *str) {
 
 int checkFile(char *filename) {
     char *ext = strrchr(filename, '.');
-    return ext && (strcmp(ext, ".txt") == 0);
+    return ext && (strcmp(ext, ".txt") == 0 || strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0);
+}
+
+void* producer(void *arg) {
+    char *dir_path = (char*)arg;
+    search(dir_path);
+
+    pthread_mutex_lock(&buffer.mutex);
+    finish = 1;
+    pthread_cond_signal(&buffer.empty);
+    pthread_mutex_unlock(&buffer.mutex);
+    return NULL;
+}
+
+void* consumer(void *arg) {
+    int tid = ((ThreadArg*)arg)->thread_id;
+    printf("[Thread#%d] started searching '%s'...\n", tid, search_word);
+
+    while (1) {
+        char *file_path = getBuffer(&buffer);
+        if (!file_path) break;
+
+        int found = countWord(file_path, search_word);
+
+        pthread_mutex_lock(&total_mutex);
+        total_found += found;
+        pthread_mutex_unlock(&total_mutex);
+
+        pthread_mutex_lock(&count_mutex);
+        file_count++;
+        pthread_mutex_unlock(&count_mutex);
+
+        printf("[Thread#%d] %s : %d found\n", tid, file_path, found);
+        free(file_path);
+    }
+    return NULL;
 }
 
 void initBuffer(Buffer *b, int size) {
@@ -124,18 +177,7 @@ char* getBuffer(Buffer *b) {
     return path;
 }
 
-void* producer(void *arg) {
-    char *dir_path = (char*)arg;
-    recursive_search(dir_path);
-
-    pthread_mutex_lock(&buffer.mutex);
-    finish = 1;
-    pthread_cond_broadcast(&buffer.empty);
-    pthread_mutex_unlock(&buffer.mutex);
-    return NULL;
-}
-
-void recursive_search(char *path) {
+void search(char *path) {
     struct dirent *entry;
     DIR *dp = opendir(path);
     if (!dp) return;
@@ -150,7 +192,7 @@ void recursive_search(char *path) {
         stat(full_path, &st);
 
         if (S_ISDIR(st.st_mode)) {
-            recursive_search(full_path);
+            search(full_path);
         } else if (S_ISREG(st.st_mode) && checkFile(entry->d_name)) {
             putBuffer(&buffer, full_path);
         }
@@ -174,20 +216,4 @@ int countWord(char *filepath, char *word) {
 
     fclose(fp);
     return count;
-}
-
-void* consumer(void *arg) {
-    while (1) {
-        char *file_path = getBuffer(&buffer);
-        if (!file_path) break;
-
-        int found = countWord(file_path, search_word);
-        pthread_mutex_lock(&total_mutex);
-        found += found;
-        pthread_mutex_unlock(&total_mutex);
-
-        printf("[Thread %ld] %s: %d\n", pthread_self(), file_path, found);
-        free(file_path);
-    }
-    return NULL;
 }
